@@ -21,6 +21,11 @@ extern "C" {
   fn hvm_cu(book_buffer: *const u32, run_io: bool);
 }
 
+#[cfg(feature = "vulkan")]
+extern "C" {
+    fn hvm_vk(book_buffer: *const u32, run_io: bool);
+}
+
 fn main() {
   let matches = Command::new("kind2")
     .about("HVM2: Higher-order Virtual Machine 2 (32-bit Version)")
@@ -46,7 +51,11 @@ fn main() {
         .arg(Arg::new("io")
           .long("io")
           .action(ArgAction::SetTrue)
-          .help("Run with IO enabled")))
+             .help("Run with IO enabled")))
+    .subcommand(
+      Command::new("run-vk")
+	.about("Interprets a file (using Vulkan)")
+	.arg(Arg::new("file").required(true)))
     .subcommand(
       Command::new("gen-c")
         .about("Compiles a file with IO (to standalone C)")
@@ -98,6 +107,21 @@ fn main() {
       #[cfg(not(feature = "cuda"))]
       println!("CUDA not available!\n");
     }
+      Some(("run-vk", sub_matches)) => {
+	  let file = sub_matches.get_one::<String>("file").expect("required");
+      let code = fs::read_to_string(file).expect("Unable to read file");
+      let book = ast::Book::parse(&code).unwrap_or_else(|er| panic!("{}",er)).build();
+      let mut data : Vec<u8> = Vec::new();
+      book.to_buffer(&mut data);
+      //let run_io = sub_matches.get_flag("io");
+      #[cfg(feature = "vulkan")]
+      unsafe {
+        hvm_vk(data.as_mut_ptr() as *mut u32, false);
+      }
+      #[cfg(not(feature = "vulkan"))]
+      println!("Vulkan not available!\n");
+
+      }
     Some(("gen-c", sub_matches)) => {
       // Reads book from file
       let file = sub_matches.get_one::<String>("file").expect("required");

@@ -16,6 +16,20 @@ fn main() {
     }
   }
 
+  match cc::Build::new()
+				.file("src/hvm_vk.c")
+				.opt_level(3)
+				.warnings(false)
+				.try_compile("hvm-vk") {
+						Ok(_) => {
+								println!("cargo:rerun-if-changed=src/hvm_vk.c");
+								println!("cargo:rustc-cfg=feature=\"vulkan\"");
+								println!("cargo:rustc-link-lib=vulkan");
+				},
+			Err(e) => {
+			  println!("sadge no vk :(");
+			}
+	}
 
   // Builds hvm.cu
   if std::process::Command::new("nvcc").arg("--version").stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null()).status().is_ok() {
